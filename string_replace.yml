@@ -1,0 +1,39 @@
+---
+# ansible-playbook update_commit_hash.yml -e "{'replace': true}" -e "old_hash=fu new_hash=bar"
+- name: String replace in filtered files
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    old_hash: "asdf - not valid - oij"
+    new_hash: "if you see this, mistake"
+    replace: false
+
+  tasks:
+    - name: Find policy and projects files to update hash
+      find:
+        paths: 
+          - '/opt/app/ssaypras/projects/gcp_accounts'
+        file_type: file
+        depth: 4
+        recurse: true
+        use_regex: true
+        patterns:
+          - '.*project\.tf$'
+          - '.*policy\.tf$'
+          - 'make_gcp_project_tf_code.yml'
+      register: tf_files
+    
+    - debug:
+        msg: "{{ item.path }}"
+        verbosity: 1
+      loop: "{{ tf_files.files }}"
+    
+    - name: In file, replace old hash with new hash
+      replace:
+        path: "{{ item.path }}"
+        regexp: "{{ old_hash }}" 
+        replace: "{{ new_hash }}"
+      loop: "{{ tf_files.files }}"
+      when: replace|bool
